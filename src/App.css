@@ -1,0 +1,175 @@
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.notice {
+  background-color: #ffcccb; /* Light red */
+  color: #d32f2f; /* Dark red */
+  padding: 5px;
+  text-align: center;
+  font-weight: bold;
+}
+
+body {
+  font-family: Arial, sans-serif;
+}
+.trade-card {
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 15px;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px !important;
+}
+.sell {
+  background-color: #ffdddd;
+  color: red;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.executed {
+  color: green;
+  font-weight: bold;
+}
+.ltp {
+  font-size: 18px;
+  font-weight: bold;
+}
+.loss {
+  color: red;
+}
+.profit {
+  color: green;
+}
+.divider {
+  border-top: 1px solid #ddd;
+  margin: 10px 0;
+}
+.footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+.ord-seq{
+  text-transform: uppercase;
+}
+
+.trade-card {
+  background: linear-gradient(135deg, #f8f9fa, #ffffff);
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  font-family: "Poppins", sans-serif;
+  
+  margin: 10px auto;
+  transition: transform 0.3s ease-in-out;
+}
+
+.trade-card:hover {
+  transform: translateY(-5px);
+}
+
+.trade-header, .trade-timing, .supertrend, .trade-prices, .trade-investment {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 14px;
+}
+
+.instrument {
+  font-size: 18px;
+  font-weight: 600;
+  color: #222;
+}
+
+.order-status {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 5px;
+  text-transform: uppercase;
+}
+
+.order-status.complete {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.order-status.open {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.ord-seq {
+  font-weight: bold;
+  color: #343a40;
+  font-size: 16px;
+}
+
+.profit {
+  color: #28a745;
+  font-weight: bold;
+}
+
+.loss {
+  color: #dc3545;
+  font-weight: bold;
+}
+
+.divider {
+  width: 100%;
+  height: 1px;
+  background: #ddd;
+  margin: 10px 0;
+}
+
+.supertrend span {
+  font-weight: bold;
+  color: #007bff;
+}
+
+.trade-investment label {
+  font-size: 15px;
+  font-weight: 500;
+}
