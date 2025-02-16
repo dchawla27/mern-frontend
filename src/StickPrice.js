@@ -5,7 +5,8 @@ const StockPrice = ({ getLTP }) => {
   const [ltp, setLtp] = useState(null);
 
   useEffect(() => {
-    const eventSource = new EventSource('http://localhost:3001/stock-price');
+    const API_HOST = process.env.REACT_APP_API_HOST;
+    const eventSource = new EventSource(`${API_HOST}stock-price`);
 
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
