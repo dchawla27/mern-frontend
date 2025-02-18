@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { TextField, Button, Grid, Paper, Typography } from '@mui/material';
-import axios from 'axios';
 import fetchData from './services/apiUtils';
 import { setItemIntoLocalStorage } from './common/functions';
 
