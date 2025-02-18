@@ -11,6 +11,7 @@ import LoginForm from "./LoginForm";
 import fetchData from "./services/apiUtils";
 import { clearSession, isSessionDetailsAvailable } from "./common/functions";
 import './App.css'
+const optionsExpiryMonth = process.env.REACT_APP_OPTIONS_EXPIRY_MONTH;
 
 const NIFTY_FUTURES = [
   {
@@ -44,6 +45,7 @@ const NIFTY_FUTURE = {
 
 
 const App = () => {
+  const [isLoading, setIsLoading] = useState(true);
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
   const [candleData, setCandleData] = useState([]);
   const [candleDataNiftyFuture, setCandleDataNiftyFuture] = useState([]);
@@ -64,14 +66,12 @@ const App = () => {
   const marketEndTime = moment().hour(15).minute(0);
   const threePm = moment().hour(15).minute(0);
 
-  /**
-   * Check server health and manage user session
-   */
+
   useEffect(() => {
     const healthCheck = async () => {
       try {
         const response = await fetchData("healthCheck", "GET");
-
+        setIsLoading(false)
         if (!response?.success && response?.message === "Invalid Token") {
           setIsUserLoggedIn(false);
         } else {
@@ -89,17 +89,17 @@ const App = () => {
       }
     };
 
+    clearSession();
     healthCheck();
     const intervalId = setInterval(healthCheck, 15 * 60 * 1000);
     return () => clearInterval(intervalId);
   }, []);
 
 
-  /**
-   * Fetch candle data when user is logged in
-   */
   useEffect(() => {
-    if (isUserLoggedIn && isSessionDetailsAvailable()) {
+    console.log('coming here 123')
+    if (!isLoading && isUserLoggedIn) {
+      console.log('coming here')
       fetchCandleData();
       // fetchCandleData(NIFTY_FUTURE.symboltoken, NIFTY_FUTURE.exchage)
       ltp && fetchAllOrders();
@@ -108,22 +108,18 @@ const App = () => {
     if(isUserLoggedIn && !instrumentsList){
       fetchInstruments()
     }
-  }, [isUserLoggedIn]);
+  }, [isUserLoggedIn, isLoading]);
 
-  /**
-   * Prepare orders when LTP and SuperTrend values are available
-   */
+
   useEffect(() => {
     if (ltp > 0 && superTrend) {
       prepareForOrder();
     }
   }, [ltp, superTrend, openOrder]);
 
-  /**
-   * Fetch all orders when a new order is placed
-   */
+
   useEffect(() => {
-    fetchAllOrders();
+    !isLoading && fetchAllOrders();
   }, [isOrderPlaced]);
 
 
@@ -131,18 +127,16 @@ const App = () => {
     if(isUserLoggedIn){
       try{
         const data = {
-          "symboltoken": "NIFTY27FEB25Fut",
+          "symboltoken": optionsExpiryMonth,
         }
-        const response = await fetchData("searchScrip", "POST",data);
+        const response = await fetchData("searchScrip", "POST", data);
         setInstrumentsList(response)
       }catch(e){
         console.log(e)
       }
     }
   }
-  /**
-   * Fetch all orders
-   */
+
   const fetchAllOrders = async () => {
     try {
       const response = await fetchData("getAllOrders", "GET");
@@ -237,9 +231,6 @@ const App = () => {
     }
   };
 
-  /**
-   * Create a new order
-   */
   const createDBOrder = async (order) => {
     try {
       await fetchData("placeOrder", "POST", order);
@@ -248,9 +239,6 @@ const App = () => {
     }
   };
 
-  /**
-   * Prepare and place an order
-   */
   const prepareForOrder = async () => {
     if (!isAllowedTime() && !isOrderPlaced) return;
 
@@ -308,9 +296,6 @@ const App = () => {
     }
   };
 
-  /**
-   * Fetch candle data
-   */
   const fetchCandleData = async () => {
     try {
       const symboltoken =  99926000;
@@ -328,9 +313,6 @@ const App = () => {
     }
   };
 
-  /**
-   * Utility functions
-   */
   const isAllowedTime = () => moment().isBetween(marketStartTime, marketEndTime);
   const isTimeAfterThreePm = () => moment().isAfter(threePm);
 
@@ -389,232 +371,243 @@ const App = () => {
     }
         console.log('important', selectedOption || null)
     return selectedOption || null; // Return the selected option or null if none found
-}
+  }
+
+  const logout = async() => {
+    clearSession();
+    setIsUserLoggedIn(false);
+    await fetchData("logout");
+  }
   
-  
-const { closedTrades, openTrades, totalPnL } = calculatePnL(ordersList);
 
   return (
-    <Container fixed>
-     <Paper elevation={3} >
-        <Button variant="contained" onClick={() => {selectOption(instrumentsList,superTrend?.direction == 'up'? 'Buy':'Sell', 23381.60)}}>test</Button>
-        {!isUserLoggedIn && <LoginForm setIsUserLoggedIn = {setIsUserLoggedIn} />}
-        {!isAllowedTime() && isUserLoggedIn && <Paper elevation={3} className="notice"> <h3>Orders will be executed only between {marketStartTime.format("hh:mm A")} and {marketEndTime.format("hh:mm A")}.</h3> </Paper>}
-        {/* {isUserLoggedIn && <StockPrice />} */}
-        {
-          isUserLoggedIn && 
-            <>
-                    <AppBar position="static">
-                      <Toolbar>
-                        <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 2 }} >
-                          <MenuIcon />
-                        </IconButton>
-                        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-                        Algo Treding
-                        </Typography>
-                        {isUserLoggedIn ? <Button color="inherit" onClick={() => {clearSession();setIsUserLoggedIn(false);}}>Logut</Button> : <Button color="inherit">Login</Button>}
-                      </Toolbar>
-                    </AppBar>
-                    <Box sx={{px: 2 }}>
-                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 2, md: 4 }}  sx={{mt:'20px'}}  alignItems="center" justifyContent={'space-evenly'}>
-                        <Box sx={{ width: { xs: "100%", sm: "auto" }, px: { xs: 2, sm: 0 } }}>
-                          <Card variant="outlined" >
-                            <CardContent >
-                              <StockPrice getLTP={setLTP} />
-                            </CardContent>
-                          </Card>
-                        </Box>
-                        <ATRCalculator candles={candleData} multiplier={2} limit={20} setSuperTrendToParent={setSuperTrend} />
-                      </Stack>
-                      <Stack direction="column" spacing={2}   sx={{mt:'20px'}}>
-                        <Box className="header">
-                          <Box><span className="instrument">P&L:</span>  <span className={totalReturn >= 0 ? 'profit':'loss'}>{totalReturn * orderQty} </span> </Box>
-                          <Box><Button  variant="contained" onClick={fetchAllOrders}>Get orders</Button></Box>
-                        </Box>
-                        
-                        {
-                          ordersListTemp?.length > 0 && 
-                          <>
-                            {ordersListTemp.map((row, ind) => {
+    <>
+      {
+        isLoading ? "Loading..."
+        :
+        <Container fixed>
+          <Paper elevation={3} >
+              {/* <Button variant="contained" onClick={() => {selectOption(instrumentsList,superTrend?.direction == 'up'? 'Buy':'Sell', 23381.60)}}>test</Button> */}
+              {!isUserLoggedIn && <LoginForm setIsLoading = {setIsLoading} setIsUserLoggedIn = {setIsUserLoggedIn} />}
+              {!isAllowedTime() && isUserLoggedIn && <Paper elevation={3} className="notice"> <h3>Orders will be executed only between {marketStartTime.format("hh:mm A")} and {marketEndTime.format("hh:mm A")}.</h3> </Paper>}
+              {/* {isUserLoggedIn && <StockPrice />} */}
+              {
+                isUserLoggedIn && 
+                  <>
+                          <AppBar position="static">
+                            <Toolbar>
+                              <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 2 }} >
+                                <MenuIcon />
+                              </IconButton>
+                              <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                              Algo Treding
+                              </Typography>
+                              {isUserLoggedIn ? <Button color="inherit" onClick={() => {logout()}}>Logout</Button> : <Button color="inherit">Login</Button>}
+                            </Toolbar>
+                          </AppBar>
+                          <Box sx={{px: 2 }}>
+                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 2, md: 4 }}  sx={{mt:'20px'}}  alignItems="center" justifyContent={'space-evenly'}>
+                              <Box sx={{ width: { xs: "100%", sm: "auto" }, px: { xs: 2, sm: 0 } }}>
+                                <Card variant="outlined" >
+                                  <CardContent >
+                                    <StockPrice getLTP={setLTP} />
+                                  </CardContent>
+                                </Card>
+                              </Box>
+                              <ATRCalculator candles={candleData} multiplier={2} limit={20} setSuperTrendToParent={setSuperTrend} />
+                            </Stack>
+                            <Stack direction="column" spacing={2}   sx={{mt:'20px'}}>
+                              <Box className="header">
+                                <Box><span className="instrument">P&L:</span>  <span className={totalReturn >= 0 ? 'profit':'loss'}>{totalReturn * orderQty} </span> </Box>
+                                <Box><Button  variant="contained" onClick={()=>(fetchAllOrders())}>Get orders</Button></Box>
+                              </Box>
                               
-                              return (
+                              {
+                                ordersListTemp?.length > 0 && 
                                 <>
-                                <Box>{}</Box>
-                                <Box key={ind} className="trade-card">
-                                  <div className="trade-header">
-                                    <label className="instrument">{row.instrument}</label>
-                                    <label className={`order-status ${row.orderStatus.toLowerCase()}`}>
-                                      {row.orderStatus}
-                                    </label>
-                                  </div>
-                                  <div className="trade-timing">
-                                    <label>{moment(row?.orderPlaceTime).format("YYYY-MM-DD hh:mm A")}</label>
-                                    <label>{row?.orderSettleTime && moment(row.orderSettleTime).format("YYYY-MM-DD hh:mm A")}</label>
-                                  </div>
-                                  <div className="supertrend">
-                                    <label>SuperTrend: <span>{row?.superTrendValueAtOrderPlace}</span></label>
-                                    <label>{ row.superTrendValueAtSettleOrder && <>SuperTrend: <span>{row.superTrendValueAtSettleOrder}</span></>}</label>
-                                  </div>
-                                  <div className="trade-prices">
-                                    <label>
-                                      <span className="ord-seq">{row?.orderTypeSeq1}</span> @ {row?.price1}
-                                    </label>
-                                    <label>
-                                      {row?.orderTypeSeq2 && <>
-                                        <span className="ord-seq">{row?.orderTypeSeq2}</span> @ {row?.price2} 
-                                         <span className={row.isPositive ? "profit" : "loss"}>
-                                            ({row?.percentage}%)
-                                          </span>
-                                      </>}
-                                    </label>
-                                  </div>
-                                  {
-                                    row?.orderTypeSeq2 && <>
-                                      <div className="divider"></div>
-                                      <div className="trade-investment">
-                                        <label>Invested: ₹{row.invested}</label>
-                                        <label>{reasonsMapping[row.description]}</label>
-                                        <label>
-                                          {row.isPositive ? (
-                                            <span className="profit">Gain +{row?.difference * orderQty} </span>
-                                          ) : (
-                                            <span className="loss">Loss {row?.difference * orderQty} </span>
-                                          )}
-                                        </label>
-                                      </div>
-                                    </>
-                                  }
-                                  
-                                </Box>
+                                  {ordersListTemp.map((row, ind) => {
+                                    
+                                    return (
+                                      <>
+                                      <Box>{}</Box>
+                                      <Box key={ind} className="trade-card">
+                                        <div className="trade-header">
+                                          <label className="instrument">{row.instrument}</label>
+                                          <label className={`order-status ${row.orderStatus.toLowerCase()}`}>
+                                            {row.orderStatus}
+                                          </label>
+                                        </div>
+                                        <div className="trade-timing">
+                                          <label>{moment(row?.orderPlaceTime).format("YYYY-MM-DD hh:mm A")}</label>
+                                          <label>{row?.orderSettleTime && moment(row.orderSettleTime).format("YYYY-MM-DD hh:mm A")}</label>
+                                        </div>
+                                        <div className="supertrend">
+                                          <label>SuperTrend: <span>{row?.superTrendValueAtOrderPlace}</span></label>
+                                          <label>{ row.superTrendValueAtSettleOrder && <>SuperTrend: <span>{row.superTrendValueAtSettleOrder}</span></>}</label>
+                                        </div>
+                                        <div className="trade-prices">
+                                          <label>
+                                            <span className="ord-seq">{row?.orderTypeSeq1}</span> @ {row?.price1}
+                                          </label>
+                                          <label>
+                                            {row?.orderTypeSeq2 && <>
+                                              <span className="ord-seq">{row?.orderTypeSeq2}</span> @ {row?.price2} 
+                                              <span className={row.isPositive ? "profit" : "loss"}>
+                                                  ({row?.percentage}%)
+                                                </span>
+                                            </>}
+                                          </label>
+                                        </div>
+                                        {
+                                          row?.orderTypeSeq2 && <>
+                                            <div className="divider"></div>
+                                            <div className="trade-investment">
+                                              <label>Invested: ₹{row.invested}</label>
+                                              <label>{reasonsMapping[row.description]}</label>
+                                              <label>
+                                                {row.isPositive ? (
+                                                  <span className="profit">Gain +{row?.difference * orderQty} </span>
+                                                ) : (
+                                                  <span className="loss">Loss {row?.difference * orderQty} </span>
+                                                )}
+                                              </label>
+                                            </div>
+                                          </>
+                                        }
+                                        
+                                      </Box>
+                                      </>
+                                    );
+                                  })}
                                 </>
-                              );
-                            })}
-                          </>
-                        }
-                      </Stack>
-                      {/* <Divider  sx={{ borderWidth: 2, margin:'0 0 20px 0' }} /> */}
-                      <Box>
-                      { 
-                        isOrderPlaced && <>
-                          <Stack direction="row" spacing={1} padding={'20px'} alignItems="center" justifyContent={'space-between'}>
-                            <Typography variant="h6" gutterBottom>
-                              Open Positions
-                            </Typography>
-                            <Button variant="contained" onClick={() => {fetchAllOrders()}}>Refresh</Button>
-                          </Stack>
-                          <TableContainer component={Paper} sx={{ boxShadow: 3, borderRadius: 2, overflow: 'hidden' }}>
-                            <Table sx={{ minWidth: 650 }} aria-label="simple table">
-                              <TableHead>
-                                <TableRow sx={{  color: 'white' }}>
-                                  <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
-                                  <TableCell sx={{ fontWeight: 'bold' }}>Type</TableCell>
-                                  <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
-                                  <TableCell sx={{ fontWeight: 'bold' }}>Price</TableCell>
-                                  <TableCell sx={{ fontWeight: 'bold' }}>SuperTrend Value</TableCell>
-                                  <TableCell sx={{ fontWeight: 'bold' }}>Qty</TableCell>
-                                </TableRow>
-                              </TableHead>
-                              <TableBody>
-                                {ordersList.filter(x=>x.orderStatus == 'open').map((row, ind) => (
-                                  <TableRow
-                                    key={row.ind}
-                                    sx={{
-                                      '&:nth-of-type(even)': {
-                                        backgroundColor: '#f4f6f8',
-                                      },
-                                      '&:hover': {
-                                        backgroundColor: '#e0e0e0',
-                                      },
-                                    }}
-                                  >
-                                    <TableCell>{ind + 1}</TableCell>
-                                    <TableCell
-                                      sx={{
-                                        backgroundColor: row.type === 'Buy' ? 'green' : 'red',
-                                        color: '#fff',
-                                        fontWeight: 'bold',
-                                        padding: '12px',
-                                        textAlign: 'center',
-                                      }}
-                                    >
-                                      {row.type}
-                                    </TableCell>
-                                    <TableCell >{row.date}</TableCell>
-                                    <TableCell >{row.price.toFixed(2)}</TableCell>
-                                    <TableCell >{row.superTrendValue}</TableCell>
-                                    <TableCell >{row.qty}</TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </TableContainer>
-                        </>
-                      }
-                      
-                      {
-                        ordersList?.length > 0 && <>
-                        <Stack direction="row" spacing={1} padding={'20px'} alignItems="center" justifyContent={'space-between'}>
-                          <Typography variant="h6" gutterBottom>
-                            Completed Orders
-                          </Typography>
-                          <Button variant="contained" onClick={() => {fetchAllOrders()}}>Refresh</Button>
-                        </Stack>
-                        <TableContainer component={Paper} sx={{ boxShadow: 3, borderRadius: 2, overflow: 'hidden' }}>
-                          <Table sx={{ minWidth: 650 }} aria-label="simple table">
-                            <TableHead>
-                              <TableRow sx={{  color: 'white' }}>
-                                <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Type</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Price</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>SuperTrend Value</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Qty</TableCell>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {ordersList.filter(x=>x.orderStatus !== 'open').map((row, ind) => (
-                                <TableRow
-                                  key={row.ind}
-                                  sx={{
-                                    '&:nth-of-type(even)': {
-                                      backgroundColor: '#f4f6f8',
-                                    },
-                                    '&:hover': {
-                                      backgroundColor: '#e0e0e0',
-                                    },
-                                  }}
-                                >
-                                  <TableCell>{ind + 1}</TableCell>
-                                  <TableCell
-                                    sx={{
-                                      backgroundColor: row.type === 'Buy' ? 'green' : 'red',
-                                      color: '#fff',
-                                      fontWeight: 'bold',
-                                      padding: '12px',
-                                      textAlign: 'center',
-                                    }}
-                                  >
-                                    {row.type}
-                                  </TableCell>
-                                  <TableCell >{row.date}</TableCell>
-                                  <TableCell >{row.price.toFixed(2)}</TableCell>
-                                  <TableCell >{row.superTrendValue}</TableCell>
-                                  <TableCell >{row.qty}</TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
-                        </>
-                      }
-                      
-                      </Box>
-                    </Box>
-                          
-            </>
-        }
-         </Paper>
-        </Container>
+                              }
+                            </Stack>
+                            {/* <Divider  sx={{ borderWidth: 2, margin:'0 0 20px 0' }} /> */}
+                            <Box>
+                            { 
+                              isOrderPlaced && <>
+                                <Stack direction="row" spacing={1} padding={'20px'} alignItems="center" justifyContent={'space-between'}>
+                                  <Typography variant="h6" gutterBottom>
+                                    Open Positions
+                                  </Typography>
+                                  <Button variant="contained" onClick={() => {fetchAllOrders()}}>Refresh</Button>
+                                </Stack>
+                                <TableContainer component={Paper} sx={{ boxShadow: 3, borderRadius: 2, overflow: 'hidden' }}>
+                                  <Table sx={{ minWidth: 650 }} aria-label="simple table">
+                                    <TableHead>
+                                      <TableRow sx={{  color: 'white' }}>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>Type</TableCell>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>Price</TableCell>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>SuperTrend Value</TableCell>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>Qty</TableCell>
+                                      </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                      {ordersList.filter(x=>x.orderStatus == 'open').map((row, ind) => (
+                                        <TableRow
+                                          key={row.ind}
+                                          sx={{
+                                            '&:nth-of-type(even)': {
+                                              backgroundColor: '#f4f6f8',
+                                            },
+                                            '&:hover': {
+                                              backgroundColor: '#e0e0e0',
+                                            },
+                                          }}
+                                        >
+                                          <TableCell>{ind + 1}</TableCell>
+                                          <TableCell
+                                            sx={{
+                                              backgroundColor: row.type === 'Buy' ? 'green' : 'red',
+                                              color: '#fff',
+                                              fontWeight: 'bold',
+                                              padding: '12px',
+                                              textAlign: 'center',
+                                            }}
+                                          >
+                                            {row.type}
+                                          </TableCell>
+                                          <TableCell >{row.date}</TableCell>
+                                          <TableCell >{row.price.toFixed(2)}</TableCell>
+                                          <TableCell >{row.superTrendValue}</TableCell>
+                                          <TableCell >{row.qty}</TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </TableContainer>
+                              </>
+                            }
+                            
+                            {
+                              ordersList?.length > 0 && <>
+                              <Stack direction="row" spacing={1} padding={'20px'} alignItems="center" justifyContent={'space-between'}>
+                                <Typography variant="h6" gutterBottom>
+                                  Completed Orders
+                                </Typography>
+                                <Button variant="contained" onClick={() => {fetchAllOrders()}}>Refresh</Button>
+                              </Stack>
+                              <TableContainer component={Paper} sx={{ boxShadow: 3, borderRadius: 2, overflow: 'hidden' }}>
+                                <Table sx={{ minWidth: 650 }} aria-label="simple table">
+                                  <TableHead>
+                                    <TableRow sx={{  color: 'white' }}>
+                                      <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
+                                      <TableCell sx={{ fontWeight: 'bold' }}>Type</TableCell>
+                                      <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
+                                      <TableCell sx={{ fontWeight: 'bold' }}>Price</TableCell>
+                                      <TableCell sx={{ fontWeight: 'bold' }}>SuperTrend Value</TableCell>
+                                      <TableCell sx={{ fontWeight: 'bold' }}>Qty</TableCell>
+                                    </TableRow>
+                                  </TableHead>
+                                  <TableBody>
+                                    {ordersList.filter(x=>x.orderStatus !== 'open').map((row, ind) => (
+                                      <TableRow
+                                        key={row.ind}
+                                        sx={{
+                                          '&:nth-of-type(even)': {
+                                            backgroundColor: '#f4f6f8',
+                                          },
+                                          '&:hover': {
+                                            backgroundColor: '#e0e0e0',
+                                          },
+                                        }}
+                                      >
+                                        <TableCell>{ind + 1}</TableCell>
+                                        <TableCell
+                                          sx={{
+                                            backgroundColor: row.type === 'Buy' ? 'green' : 'red',
+                                            color: '#fff',
+                                            fontWeight: 'bold',
+                                            padding: '12px',
+                                            textAlign: 'center',
+                                          }}
+                                        >
+                                          {row.type}
+                                        </TableCell>
+                                        <TableCell >{row.date}</TableCell>
+                                        <TableCell >{row.price.toFixed(2)}</TableCell>
+                                        <TableCell >{row.superTrendValue}</TableCell>
+                                        <TableCell >{row.qty}</TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </TableContainer>
+                              </>
+                            }
+                            
+                            </Box>
+                          </Box>
+                                
+                  </>
+              }
+              </Paper>
+              </Container>
+      }
+    </>
+    
   );
 };
 

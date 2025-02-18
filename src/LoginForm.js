@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { TextField, Button, Grid, Paper, Typography } from '@mui/material';
+import axios from 'axios';
 import fetchData from './services/apiUtils';
 import { setItemIntoLocalStorage } from './common/functions';
 
-const LoginForm = ({setIsUserLoggedIn}) => {
+const LoginForm = ({setIsLoading, setIsUserLoggedIn}) => {
   const [formData, setFormData] = useState({
-    clientcode: 'AAAB104281',
-    password: '2019',
     totp: ''
   });
   const [loading, setLoading] = useState(false);
@@ -29,17 +28,12 @@ const LoginForm = ({setIsUserLoggedIn}) => {
       const response = await fetchData('login','POST',formData)
       if(response?.success){
         let result = response.data
-        setItemIntoLocalStorage("access_token",result.jwtToken)
-        setItemIntoLocalStorage("feed_token",result.feedToken)
-        setItemIntoLocalStorage("refresh_token",result.refreshToken)
+        setIsLoading(false)
         setIsUserLoggedIn(true)
       }else{
         setError('Login failed. Please check your credentials.');  
       }
-    //   console.log('Login successful:', response.data);
-      // Handle success (e.g., redirect to another page or show success message)
     } catch (err) {
-    //   console.error('Login failed:', err);
       setError('Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
@@ -54,25 +48,6 @@ const LoginForm = ({setIsUserLoggedIn}) => {
             Login Form
           </Typography>
           <form onSubmit={handleSubmit}>
-            <TextField
-              label="Client Code"
-              variant="outlined"
-              fullWidth
-              margin="normal"
-              name="clientcode"
-              value={formData.clientcode}
-              onChange={handleChange}
-            />
-            <TextField
-              label="Password"
-              type="password"
-              variant="outlined"
-              fullWidth
-              margin="normal"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-            />
             <TextField
               label="TOTP"
               variant="outlined"
