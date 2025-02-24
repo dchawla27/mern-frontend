@@ -13,6 +13,7 @@ import { clearSession, isSessionDetailsAvailable } from "./common/functions";
 import './App.css'
 const optionsExpiryMonth = process.env.REACT_APP_OPTIONS_EXPIRY_MONTH;
 
+
 const NIFTY_FUTURES = [
   {
     "symboltoken": "35013",
@@ -59,6 +60,7 @@ const App = () => {
   const [openOrder, setOpenOrder] = useState(null);
   const [instrumentsList, setInstrumentsList] = useState(null)
 
+  const isOrderAllowed = false
   const orderQty = 75;
   const instrument = "NIFTY 50";
   const invested = 200000
@@ -77,10 +79,8 @@ const App = () => {
         } else {
           setIsUserLoggedIn(true);
           const intervalId = setInterval(fetchCandleData, 10 * 1000);
-          // const intervalIdNiftyFuture = setInterval(() => fetchCandleData(NIFTY_FUTURE), 10 * 1000);
           return () => {
             clearInterval(intervalId);
-            // clearInterval(intervalIdNiftyFuture);
           }
         }
       } catch (error) {
@@ -89,7 +89,6 @@ const App = () => {
       }
     };
 
-    clearSession();
     healthCheck();
     const intervalId = setInterval(healthCheck, 15 * 60 * 1000);
     return () => clearInterval(intervalId);
@@ -97,45 +96,42 @@ const App = () => {
 
 
   useEffect(() => {
-    console.log('coming here 123')
     if (!isLoading && isUserLoggedIn) {
-      console.log('coming here')
       fetchCandleData();
-      // fetchCandleData(NIFTY_FUTURE.symboltoken, NIFTY_FUTURE.exchage)
       ltp && fetchAllOrders();
     }
 
-    if(isUserLoggedIn && !instrumentsList){
-      fetchInstruments()
-    }
+    // if(isUserLoggedIn && !instrumentsList){
+    //   fetchInstruments()
+    // }
   }, [isUserLoggedIn, isLoading]);
 
 
-  useEffect(() => {
-    if (ltp > 0 && superTrend) {
-      prepareForOrder();
-    }
-  }, [ltp, superTrend, openOrder]);
+  // useEffect(() => {
+  //   if (ltp > 0 && superTrend) {
+  //     prepareForOrder();
+  //   }
+  // }, [ltp, superTrend, openOrder]);
 
 
-  useEffect(() => {
-    !isLoading && fetchAllOrders();
-  }, [isOrderPlaced]);
+  // useEffect(() => {
+  //   !isLoading && fetchAllOrders();
+  // }, [isOrderPlaced]);
 
 
-  const fetchInstruments = async() => {
-    if(isUserLoggedIn){
-      try{
-        const data = {
-          "symboltoken": optionsExpiryMonth,
-        }
-        const response = await fetchData("searchScrip", "POST", data);
-        setInstrumentsList(response)
-      }catch(e){
-        console.log(e)
-      }
-    }
-  }
+  // const fetchInstruments = async() => {
+  //   if(isUserLoggedIn){
+  //     try{
+  //       const data = {
+  //         "symboltoken": optionsExpiryMonth,
+  //       }
+  //       const response = await fetchData("searchScrip", "POST", data);
+  //       setInstrumentsList(response)
+  //     }catch(e){
+  //       console.log(e)
+  //     }
+  //   }
+  // }
 
   const fetchAllOrders = async () => {
     try {
@@ -149,10 +145,8 @@ const App = () => {
         setOpenOrder(openOrders[0]);
       }
 
-      console.log("orders",response)
       let consideredOrdersList = []
       const updatedList = response.reduce((acc, curr, index) => {
-        console.log('12312312321', consideredOrdersList);
         if(consideredOrdersList.indexOf(response[index]['_id']) == -1){
           if (curr.orderStatus === "complete" && response[index + 1]?.orderStatus === "complete") {
             const buyOrder = [curr, response[index + 1]].find((o) => o.type === "Buy");
@@ -216,85 +210,88 @@ const App = () => {
         return acc;
       }, []);
 
-      console.log('updatedList',updatedList)
+      
       setOrdersList(response.reverse());
       setOrdersListTemp(updatedList.reverse());
 
       const completeOrders = response.filter((x) => x.orderStatus === "complete");
-      const totalPnl = completeOrders.reduce((acc, order) => {
-        return order.type === "Sell" ? acc + order.price : acc - order.price;
-      }, 0);
+      
+      // const totalPnl = completeOrders.reduce((acc, order) => {
+      //   return order.type === "Sell" ? acc + order.price : acc - order.price;
+      // }, 0);
 
-      setTotalReturn(totalPnl.toFixed(2));
+      const totalPnl = 0
+      setTotalReturn(totalPnl);
     } catch (e) {
       console.error("Error fetching orders:", e);
     }
   };
 
-  const createDBOrder = async (order) => {
-    try {
-      await fetchData("placeOrder", "POST", order);
-    } catch (e) {
-      console.error("Error placing order:", e);
-    }
-  };
+  // const createDBOrder = async (order) => {
+  //   try {
+  //     await fetchData("placeOrder", "POST", order);
+  //   } catch (e) {
+  //     console.error("Error placing order:", e);
+  //   }
+  // };
 
-  const prepareForOrder = async () => {
-    if (!isAllowedTime() && !isOrderPlaced) return;
+  // const prepareForOrder = async () => {
+  //   if(!isOrderAllowed) return 
+  //   if (!isAllowedTime() && !isOrderPlaced) return;
 
-    const { direction, upperBands, lowerBands } = superTrend;
-    const currentSuperTrendValue = direction === "up" ? upperBands : lowerBands;
-    let targetPrice = null
-    let description = ''
-    let orderType = direction === "up" ? "Buy" : "Sell";
+  //   const { direction, upperBands, lowerBands } = superTrend;
+  //   const currentSuperTrendValue = direction === "up" ? upperBands : lowerBands;
+  //   let targetPrice = null
+  //   let description = ''
+  //   let orderType = direction === "up" ? "Buy" : "Sell";
 
-    if (isOrderPlaced) {
-      orderType = orderDirection === "Sell" ? "Buy" : "Sell";
+  //   if (isOrderPlaced) {
+  //     orderType = orderDirection === "Sell" ? "Buy" : "Sell";
 
-      if (isTimeAfterThreePm()) {
-        targetPrice = +ltp.toFixed();
-        description = "DAY_TIME_END"
-      } else if ((orderDirection === "Sell" && direction === "up") || (orderDirection === "Buy" && direction === "down")) {
-        targetPrice = ltp;
-        description = "TREND_DIRECTION_CHANGE"
-      } else {
-        const { price } = openOrder;
-        if(orderDirection === "Sell"){
-          const diff = ltp - price;
-          if (diff >= 30) {
-            targetPrice = ltp
-            description = "STOP_LOSS_HIT"
-          }
-        }
-        if(orderDirection === "Buy"){
-          const diff = price - ltp;  
-          if (diff >= 30) {
-            targetPrice = ltp
-            description = "STOP_LOSS_HIT"
-          }
-        }
-      } 
-    }else{
-      targetPrice = direction === "up" ? currentSuperTrendValue + 20 : currentSuperTrendValue - 20;
-    }
+  //     if (isTimeAfterThreePm()) {
+  //       targetPrice = +ltp.toFixed();
+  //       description = "DAY_TIME_END"
+  //     } else if ((orderDirection === "Sell" && direction === "up") || (orderDirection === "Buy" && direction === "down")) {
+  //       targetPrice = ltp;
+  //       description = "TREND_DIRECTION_CHANGE"
+  //     } else {
+  //       const { price } = openOrder;
+  //       if(orderDirection === "Sell"){
+  //         const diff = ltp - price;
+  //         if (diff >= 30) {
+  //           targetPrice = ltp
+  //           description = "STOP_LOSS_HIT"
+  //         }
+  //       }
+  //       if(orderDirection === "Buy"){
+  //         const diff = price - ltp;  
+  //         if (diff >= 30) {
+  //           targetPrice = ltp
+  //           description = "STOP_LOSS_HIT"
+  //         }
+  //       }
+  //     } 
+  //   }else{
+  //     targetPrice = direction === "up" ? currentSuperTrendValue + 20 : currentSuperTrendValue - 20;
+  //   }
 
-    if (targetPrice && +ltp.toFixed() === targetPrice) {
-      const newOrder = {
-        date: moment().format(),
-        price: +ltp,
-        type: orderType,
-        qty: orderQty,
-        superTrendValue: +currentSuperTrendValue,
-        orderStatus: "open",
-        description
-      };
+  //   if (targetPrice && +ltp.toFixed() === targetPrice) {
+  //     const newOrder = {
+  //       date: moment().format(),
+  //       price: +ltp,
+  //       type: orderType,
+  //       qty: orderQty,
+  //       superTrendValue: +currentSuperTrendValue,
+  //       orderStatus: "open",
+  //       description
+  //     };
 
-      await createDBOrder(newOrder);
+  //     await createDBOrder(newOrder);
 
-      setIsOrderPlaced(!isOrderPlaced);
-      setOrderDirection(isOrderPlaced ? null : orderType);
-    }
-  };
+  //     setIsOrderPlaced(!isOrderPlaced);
+  //     setOrderDirection(isOrderPlaced ? null : orderType);
+  //   }
+  // };
 
   const fetchCandleData = async () => {
     try {
@@ -314,7 +311,7 @@ const App = () => {
   };
 
   const isAllowedTime = () => moment().isBetween(marketStartTime, marketEndTime);
-  const isTimeAfterThreePm = () => moment().isAfter(threePm);
+  // const isTimeAfterThreePm = () => moment().isAfter(threePm);
 
   const calculatePnL = (orders) => {
     let closedTrades = [];
@@ -387,10 +384,10 @@ const App = () => {
         :
         <Container fixed>
           <Paper elevation={3} >
-              {/* <Button variant="contained" onClick={() => {selectOption(instrumentsList,superTrend?.direction == 'up'? 'Buy':'Sell', 23381.60)}}>test</Button> */}
+              
               {!isUserLoggedIn && <LoginForm setIsLoading = {setIsLoading} setIsUserLoggedIn = {setIsUserLoggedIn} />}
               {!isAllowedTime() && isUserLoggedIn && <Paper elevation={3} className="notice"> <h3>Orders will be executed only between {marketStartTime.format("hh:mm A")} and {marketEndTime.format("hh:mm A")}.</h3> </Paper>}
-              {/* {isUserLoggedIn && <StockPrice />} */}
+              
               {
                 isUserLoggedIn && 
                   <>
