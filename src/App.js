@@ -59,6 +59,7 @@ const App = () => {
   const [totalReturn, setTotalReturn] = useState(0);
   const [openOrder, setOpenOrder] = useState(null);
   const [instrumentsList, setInstrumentsList] = useState(null)
+  const [jsonAPIResponse, setJsonAPIResponse] = useState({})
 
   const isOrderAllowed = false
   const orderQty = 75;
@@ -137,82 +138,78 @@ const App = () => {
     try {
       const response = await fetchData("getAllOrders", "GET");
       if (!response || response.length === 0) return;
-
-      const openOrders = response.filter((x) => x.orderStatus === "open");
-      if (openOrders.length > 0) {
-        setIsOrderPlaced(true);
-        setOrderDirection(openOrders[0].type);
-        setOpenOrder(openOrders[0]);
-      }
-
       let consideredOrdersList = []
-      const updatedList = response.reduce((acc, curr, index) => {
-        if(consideredOrdersList.indexOf(response[index]['_id']) == -1){
-          if (curr.orderStatus === "complete" && response[index + 1]?.orderStatus === "complete") {
-            const buyOrder = [curr, response[index + 1]].find((o) => o.type === "Buy");
-            const sellOrder = [curr, response[index + 1]].find((o) => o.type === "Sell");
-  
-            if (buyOrder && sellOrder) {
-              const diff = sellOrder.price - buyOrder.price;
-              acc.push({
-                instrument,
-                orderStatus: "Executed",
-                orderPlaceTime: curr.date,
-                orderSettleTime: response[index + 1].date,
-                orderTypeSeq1: curr.type,
-                orderTypeSeq2: response[index + 1].type,
-                ltp,
-                difference: diff.toFixed(2),
-                percentage: ((diff / curr.price) * 100).toFixed(2),
-                isPositive: diff >= 0,
-                qty: orderQty,
-                pnl: diff,
-                superTrendValueAtOrderPlace: curr.superTrendValue,
-                superTrendValueAtSettleOrder: response[index + 1].superTrendValue,
-                price1: curr.price,
-                price2: response[index + 1].price,
-                invested,
-                description: response[index + 1]['description']
-              });
-            }
-            if(response[index])
-            consideredOrdersList.push(response[index]['_id'])
-            consideredOrdersList.push(response[index+1]['_id'])
-          }
-  
-          if (curr.orderStatus === "open") {
-            const diff = curr.type == 'Sell' ? curr.price - ltp : ltp - curr.price;
-            acc.push({
-              instrument,
-              orderStatus: "OPEN",
-              orderPlaceTime: curr.date,
-              orderSettleTime: null,
-              orderTypeSeq1: curr.type,
-              orderTypeSeq2: null,
-              ltp,
-              difference: diff.toFixed(2),
-              percentage: ((diff / curr.price) * 100).toFixed(2),
-              isPositive: diff >= 0,
-              qty: orderQty,
-              pnl: diff,
-              superTrendValueAtOrderPlace: curr.superTrendValue,
-              superTrendValueAtSettleOrder: null,
-              price1: curr.price,
-              price2: null,
-              invested,
-              description: ""
-            });
-            consideredOrdersList.push(response[index]['_id'])
-          }
+
+      let formatedOrders = []
+      let orderChecked = []
+      for(let i = 0; i < response.length; i++){
+        if(!orderChecked.includes(response[i].orderid) && response[i].orderStatus == "complete" && response[i+1].orderStatus == "complete"){
+          
+          const initialOrd = response[i];
+          const squareOffOrd = response[i+1];
+
+          orderChecked.push(initialOrd.orderid)
+          orderChecked.push(squareOffOrd.orderid)
+
+          const diff = squareOffOrd.price - initialOrd.price
+          formatedOrders.push({
+            instrument:initialOrd.instrument,
+            orderStatus: "Executed",
+            orderPlaceTime: initialOrd.date,
+            orderSettleTime: squareOffOrd.date,
+            orderTypeSeq1: initialOrd.type,
+            orderTypeSeq2: squareOffOrd.type,
+            difference: diff.toFixed(2),
+            percentage: ((diff / initialOrd.price) * 100).toFixed(2),
+            isPositive: diff >= 0,
+            qty: initialOrd.qty,
+            pnl: diff,
+            superTrendValueAtOrderPlace: initialOrd.superTrendValue,
+            superTrendValueAtSettleOrder: squareOffOrd.superTrendValue,
+            price1: initialOrd.price,
+            price2: squareOffOrd.price,
+            invested: initialOrd.price * initialOrd.qty,
+            description: squareOffOrd['description'],
+            instrumentPrice1 : initialOrd.instrumentPrice,
+            instrumentPrice2 : squareOffOrd.instrumentPrice
+          })
+
+        }
+
+
+        if(!orderChecked.includes(response[i].orderid) && response[i].orderStatus == "open"){
+
+          const initialOrd = response[i];
+          orderChecked.push(initialOrd.orderid)
+
+          formatedOrders.push({
+            instrument:initialOrd.instrument,
+            orderStatus: "OPEN",
+            orderPlaceTime: initialOrd.date,
+            orderSettleTime: null,
+            orderTypeSeq1: initialOrd.type,
+            orderTypeSeq2: null,
+            difference: null,
+            percentage: null,
+            isPositive: null,
+            qty: initialOrd.qty,
+            pnl: null,
+            superTrendValueAtOrderPlace: initialOrd.superTrendValue,
+            superTrendValueAtSettleOrder: null,
+            price1: initialOrd.price,
+            price2: null,
+            invested: initialOrd.price * initialOrd.qty,
+            description: null,
+            instrumentPrice1 : initialOrd.instrumentPrice,
+            instrumentPrice2 : null
+          })
+
         }
         
-
-        return acc;
-      }, []);
-
+      }
       
       setOrdersList(response.reverse());
-      setOrdersListTemp(updatedList.reverse());
+      setOrdersListTemp(formatedOrders.reverse());
 
       const completeOrders = response.filter((x) => x.orderStatus === "complete");
       
@@ -375,6 +372,26 @@ const App = () => {
     setIsUserLoggedIn(false);
     await fetchData("logout");
   }
+
+  const fetchOrderBook = async() => {
+    try{
+      const response = await fetchData(`getOrderBook`, "GET");
+      setJsonAPIResponse(response)
+
+    }catch(e){
+      console.log(e)
+    }
+  }
+
+  const fetchTredBook = async() => {
+    try{
+      const response = await fetchData(`getTredBook`, "GET");
+      setJsonAPIResponse(response)
+
+    }catch(e){
+      console.log(e)
+    }
+  }
   
 
   return (
@@ -413,6 +430,13 @@ const App = () => {
                               </Box>
                               <ATRCalculator candles={candleData} multiplier={2} limit={20} setSuperTrendToParent={setSuperTrend} />
                             </Stack>
+
+                            {/* <Button variant="contained" onClick={() => {fetchOrderBook()}}> Get All Orders</Button>
+                            <Button variant="contained" onClick={() => {fetchTredBook()}}> Get Settled Orders</Button> */}
+                            {/* <Box>
+                              {JSON.stringify(jsonAPIResponse)}
+                            </Box> */}
+
                             <Stack direction="column" spacing={2}   sx={{mt:'20px'}}>
                               <Box className="header">
                                 <Box><span className="instrument">P&L:</span>  <span className={totalReturn >= 0 ? 'profit':'loss'}>{totalReturn * orderQty} </span> </Box>
@@ -437,6 +461,10 @@ const App = () => {
                                         <div className="trade-timing">
                                           <label>{moment(row?.orderPlaceTime).format("YYYY-MM-DD hh:mm A")}</label>
                                           <label>{row?.orderSettleTime && moment(row.orderSettleTime).format("YYYY-MM-DD hh:mm A")}</label>
+                                        </div>
+                                        <div className="trade-timing">
+                                          <label>Nifty Price: {row.instrumentPrice1}</label>
+                                          <label>{row?.instrumentPrice2 && 'Nifty Price:'}  {row?.instrumentPrice2} </label>
                                         </div>
                                         <div className="supertrend">
                                           <label>SuperTrend: <span>{row?.superTrendValueAtOrderPlace}</span></label>
@@ -480,7 +508,7 @@ const App = () => {
                               }
                             </Stack>
                             {/* <Divider  sx={{ borderWidth: 2, margin:'0 0 20px 0' }} /> */}
-                            <Box>
+                            {/* <Box>
                             { 
                               isOrderPlaced && <>
                                 <Stack direction="row" spacing={1} padding={'20px'} alignItems="center" justifyContent={'space-between'}>
@@ -595,7 +623,7 @@ const App = () => {
                               </>
                             }
                             
-                            </Box>
+                            </Box> */}
                           </Box>
                                 
                   </>
