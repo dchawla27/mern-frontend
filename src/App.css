@@ -1,5 +1,6 @@
 .App {
   text-align: center;
+  font-family: "Poppins", sans-serif;
 }
 
 .App-logo {
@@ -213,3 +214,4 @@ h2 {
   font-size: 12px;
   color: #666;
 }
+

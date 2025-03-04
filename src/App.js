@@ -98,7 +98,7 @@ const App = () => {
           }
           
           formatedOrders.push({
-            instrument:initialOrd.instrument,
+            instrument: `NIFTY ${initialOrd.expirydate} ${initialOrd.strikeprice} ${initialOrd.optiontype}` ,
             orderStatus: "Executed",
             orderPlaceTime: initialOrd.date,
             orderSettleTime: squareOffOrd.date,
@@ -127,7 +127,7 @@ const App = () => {
           orderChecked.push(initialOrd.orderid)
 
           formatedOrders.push({
-            instrument:initialOrd.instrument,
+            instrument: `NIFTY ${initialOrd.expirydate} ${initialOrd.strikeprice} ${initialOrd.optiontype}` ,
             orderStatus: "OPEN",
             orderPlaceTime: initialOrd.date,
             orderSettleTime: null,
@@ -280,7 +280,7 @@ const App = () => {
                             <Stack direction="column" spacing={2}   sx={{mt:'20px'}}>
                               <Box className="header">
                                 <Box><span className="instrument">P&L:</span>  <span className={totalReturn >= 0 ? 'profit':'loss'}>{totalReturn } Points</span> </Box>
-                                <Box><span className="instrument">Brokerage:</span>  <span>{brokerage } Rs</span> </Box>
+                                {/* <Box><span className="instrument">Brokerage:</span>  <span>{brokerage } Rs</span> </Box> */}
                                 <Box><Button  variant="contained" onClick={()=>(fetchAllOrders())}>Get orders</Button></Box>
                               </Box>
                               
