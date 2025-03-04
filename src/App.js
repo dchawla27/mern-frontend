@@ -79,10 +79,6 @@ const App = () => {
           setIsUserLoggedIn(false);
         } else {
           setIsUserLoggedIn(true);
-          const intervalId = setInterval(fetchCandleData, 10 * 1000);
-          return () => {
-            clearInterval(intervalId);
-          }
         }
       } catch (error) {
         console.error("Health Check Error:", error);
@@ -98,8 +94,8 @@ const App = () => {
 
   useEffect(() => {
     if (!isLoading && isUserLoggedIn) {
-      fetchCandleData();
-      ltp && fetchAllOrders();
+      // fetchCandleData();
+      // fetchAllOrders();
     }
 
     // if(isUserLoggedIn && !instrumentsList){
@@ -151,7 +147,13 @@ const App = () => {
           orderChecked.push(initialOrd.orderid)
           orderChecked.push(squareOffOrd.orderid)
 
-          const diff = squareOffOrd.price - initialOrd.price
+          let diff = null;
+          if(initialOrd.optiontype == "CE"){
+            diff = squareOffOrd.instrumentPrice - initialOrd.instrumentPrice
+          }else{
+            diff = initialOrd.instrumentPrice - squareOffOrd.instrumentPrice
+          }
+          
           formatedOrders.push({
             instrument:initialOrd.instrument,
             orderStatus: "Executed",
@@ -420,7 +422,7 @@ const App = () => {
                             </Toolbar>
                           </AppBar>
                           <Box sx={{px: 2 }}>
-                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 2, md: 4 }}  sx={{mt:'20px'}}  alignItems="center" justifyContent={'space-evenly'}>
+                            {/* <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 2, md: 4 }}  sx={{mt:'20px'}}  alignItems="center" justifyContent={'space-evenly'}>
                               <Box sx={{ width: { xs: "100%", sm: "auto" }, px: { xs: 2, sm: 0 } }}>
                                 <Card variant="outlined" >
                                   <CardContent >
@@ -429,7 +431,7 @@ const App = () => {
                                 </Card>
                               </Box>
                               <ATRCalculator candles={candleData} multiplier={2} limit={20} setSuperTrendToParent={setSuperTrend} />
-                            </Stack>
+                            </Stack> */}
 
                             {/* <Button variant="contained" onClick={() => {fetchOrderBook()}}> Get All Orders</Button>
                             <Button variant="contained" onClick={() => {fetchTredBook()}}> Get Settled Orders</Button> */}
@@ -478,7 +480,7 @@ const App = () => {
                                             {row?.orderTypeSeq2 && <>
                                               <span className="ord-seq">{row?.orderTypeSeq2}</span> @ {row?.price2} 
                                               <span className={row.isPositive ? "profit" : "loss"}>
-                                                  ({row?.percentage}%)
+                                                  {/* ({row?.percentage}%) */}
                                                 </span>
                                             </>}
                                           </label>
@@ -491,9 +493,9 @@ const App = () => {
                                               <label>{reasonsMapping[row.description]}</label>
                                               <label>
                                                 {row.isPositive ? (
-                                                  <span className="profit">Gain +{row?.difference * orderQty} </span>
+                                                  <span className="profit">Gain +{row?.difference } Points</span>
                                                 ) : (
-                                                  <span className="loss">Loss {row?.difference * orderQty} </span>
+                                                  <span className="loss">Loss {row?.difference } Points</span>
                                                 )}
                                               </label>
                                             </div>
