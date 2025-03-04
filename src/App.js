@@ -13,21 +13,6 @@ import { clearSession, isSessionDetailsAvailable } from "./common/functions";
 import './App.css'
 const optionsExpiryMonth = process.env.REACT_APP_OPTIONS_EXPIRY_MONTH;
 
-
-const NIFTY_FUTURES = [
-  {
-    "symboltoken": "35013",
-    "tradingsymbol": "NIFTY27FEB25FUT",
-  },
-  {
-    "symboltoken": "35001",
-    "tradingsymbol": "NIFTY27MAR25FUT",
-  },
-  {
-    "symboltoken": "54452",
-    "tradingsymbol": "NIFTY24APR25FUT",
-  }
-]
 const reasonsMapping =  {
     TREND_DIRECTION_CHANGE:"Trend Direction Changed.",
     STOP_LOSS_HIT: "Stop loss trigger",
@@ -35,14 +20,7 @@ const reasonsMapping =  {
     "":""
 }
 
-const NIFTY_50 = {
-  symboltoken: 99926000,
-  exchage: 'NSE'
-}
-const NIFTY_FUTURE = {
-  symboltoken: 35013,
-  exchage: 'NFO'
-}
+
 
 
 const App = () => {
@@ -57,6 +35,7 @@ const App = () => {
   const [ordersList, setOrdersList] = useState([]);
   const [ordersListTemp, setOrdersListTemp] = useState([]);
   const [totalReturn, setTotalReturn] = useState(0);
+  const [brokerage, setBrokerage] = useState(0);
   const [openOrder, setOpenOrder] = useState(null);
   const [instrumentsList, setInstrumentsList] = useState(null)
   const [jsonAPIResponse, setJsonAPIResponse] = useState({})
@@ -87,48 +66,12 @@ const App = () => {
     };
 
     healthCheck();
+    fetchSuperTrend()
     const intervalId = setInterval(healthCheck, 15 * 60 * 1000);
-    return () => clearInterval(intervalId);
+    const intervalSuperTrend = setInterval(fetchSuperTrend, 10 * 1000);
+    return () => {clearInterval(intervalId); clearInterval(intervalSuperTrend)};
   }, []);
 
-
-  useEffect(() => {
-    if (!isLoading && isUserLoggedIn) {
-      // fetchCandleData();
-      // fetchAllOrders();
-    }
-
-    // if(isUserLoggedIn && !instrumentsList){
-    //   fetchInstruments()
-    // }
-  }, [isUserLoggedIn, isLoading]);
-
-
-  // useEffect(() => {
-  //   if (ltp > 0 && superTrend) {
-  //     prepareForOrder();
-  //   }
-  // }, [ltp, superTrend, openOrder]);
-
-
-  // useEffect(() => {
-  //   !isLoading && fetchAllOrders();
-  // }, [isOrderPlaced]);
-
-
-  // const fetchInstruments = async() => {
-  //   if(isUserLoggedIn){
-  //     try{
-  //       const data = {
-  //         "symboltoken": optionsExpiryMonth,
-  //       }
-  //       const response = await fetchData("searchScrip", "POST", data);
-  //       setInstrumentsList(response)
-  //     }catch(e){
-  //       console.log(e)
-  //     }
-  //   }
-  // }
 
   const fetchAllOrders = async () => {
     try {
@@ -178,7 +121,6 @@ const App = () => {
 
         }
 
-
         if(!orderChecked.includes(response[i].orderid) && response[i].orderStatus == "open"){
 
           const initialOrd = response[i];
@@ -213,161 +155,19 @@ const App = () => {
       setOrdersList(response.reverse());
       setOrdersListTemp(formatedOrders.reverse());
 
-      const completeOrders = response.filter((x) => x.orderStatus === "complete");
+      const completeOrders = formatedOrders.filter((x) => x.orderStatus === "Executed");
       
-      // const totalPnl = completeOrders.reduce((acc, order) => {
-      //   return order.type === "Sell" ? acc + order.price : acc - order.price;
-      // }, 0);
+      const totalPnl = completeOrders?.reduce((acc, order) => acc + (Number(order.difference) || 0), 0) || 0;
 
-      const totalPnl = 0
+      const brokerage = response.length * 20
+      setBrokerage(brokerage)
       setTotalReturn(totalPnl);
     } catch (e) {
       console.error("Error fetching orders:", e);
     }
   };
 
-  // const createDBOrder = async (order) => {
-  //   try {
-  //     await fetchData("placeOrder", "POST", order);
-  //   } catch (e) {
-  //     console.error("Error placing order:", e);
-  //   }
-  // };
-
-  // const prepareForOrder = async () => {
-  //   if(!isOrderAllowed) return 
-  //   if (!isAllowedTime() && !isOrderPlaced) return;
-
-  //   const { direction, upperBands, lowerBands } = superTrend;
-  //   const currentSuperTrendValue = direction === "up" ? upperBands : lowerBands;
-  //   let targetPrice = null
-  //   let description = ''
-  //   let orderType = direction === "up" ? "Buy" : "Sell";
-
-  //   if (isOrderPlaced) {
-  //     orderType = orderDirection === "Sell" ? "Buy" : "Sell";
-
-  //     if (isTimeAfterThreePm()) {
-  //       targetPrice = +ltp.toFixed();
-  //       description = "DAY_TIME_END"
-  //     } else if ((orderDirection === "Sell" && direction === "up") || (orderDirection === "Buy" && direction === "down")) {
-  //       targetPrice = ltp;
-  //       description = "TREND_DIRECTION_CHANGE"
-  //     } else {
-  //       const { price } = openOrder;
-  //       if(orderDirection === "Sell"){
-  //         const diff = ltp - price;
-  //         if (diff >= 30) {
-  //           targetPrice = ltp
-  //           description = "STOP_LOSS_HIT"
-  //         }
-  //       }
-  //       if(orderDirection === "Buy"){
-  //         const diff = price - ltp;  
-  //         if (diff >= 30) {
-  //           targetPrice = ltp
-  //           description = "STOP_LOSS_HIT"
-  //         }
-  //       }
-  //     } 
-  //   }else{
-  //     targetPrice = direction === "up" ? currentSuperTrendValue + 20 : currentSuperTrendValue - 20;
-  //   }
-
-  //   if (targetPrice && +ltp.toFixed() === targetPrice) {
-  //     const newOrder = {
-  //       date: moment().format(),
-  //       price: +ltp,
-  //       type: orderType,
-  //       qty: orderQty,
-  //       superTrendValue: +currentSuperTrendValue,
-  //       orderStatus: "open",
-  //       description
-  //     };
-
-  //     await createDBOrder(newOrder);
-
-  //     setIsOrderPlaced(!isOrderPlaced);
-  //     setOrderDirection(isOrderPlaced ? null : orderType);
-  //   }
-  // };
-
-  const fetchCandleData = async () => {
-    try {
-      const symboltoken =  99926000;
-      const exchage= 'NSE';
-      const response = await fetchData(`getCandleData?symboltoken=${symboltoken}&exchange=${exchage}`, "GET");
-      setCandleData(response || []);
-      // if(symboltoken ==  NIFTY_50.symboltoken){
-      //   setCandleData(response || []);
-      // }else{
-      //   setCandleDataNiftyFuture(response || []);
-      // }
-      
-    } catch (error) {
-      console.error("Error fetching candle data:", error);
-    }
-  };
-
   const isAllowedTime = () => moment().isBetween(marketStartTime, marketEndTime);
-  // const isTimeAfterThreePm = () => moment().isAfter(threePm);
-
-  const calculatePnL = (orders) => {
-    let closedTrades = [];
-    let openTrades = [];
-    let totalPnL = 0;
-  
-    for (let i = 0; i < orders.length - 1; i++) {
-      if (orders[i].orderStatus === "complete" && orders[i + 1].orderStatus === "complete") {
-        let pnl = (orders[i + 1].price - orders[i].price) * orders[i].qty;
-        totalPnL += pnl;
-        closedTrades.push({
-          buyPrice: orders[i].price,
-          sellPrice: orders[i + 1].price,
-          pnl,
-        });
-        i++; // Skip the next order since it's part of the square-off pair
-      } else {
-        openTrades.push(orders[i]);
-      }
-    }
-  
-    return { closedTrades, openTrades, totalPnL };
-  };
-
-  const selectOption = (options, orderType, ltp) => {
-    const isBuy = orderType === "Buy";
-    const suffix = isBuy ? "CE" : "PE";
-
-    // Extract available strike prices
-    const filteredOptions = options
-        .filter(o => o.tradingsymbol.endsWith(suffix)) // Filter by CE or PE
-        .map(o => {
-            const match = o.tradingsymbol.match(/(\d{5})(?=CE|PE)/); // Extract last 5 digits before CE/PE
-            return {
-                ...o,
-                strike: match ? parseInt(match[1]) : null
-            };
-        })
-        .filter(o => o.strike !== null); // Ensure valid strike prices
-
-
-        console.log('filteredOptions',filteredOptions)
-    // Sort by nearest strike price >= LTP
-    filteredOptions.sort((a, b) => a.strike - b.strike);
-
-    // Find the first strike price that is >= LTP
-    let selectedOption;
-    if (isBuy) {
-        // For Buy (CE): ITM means strike price ≤ LTP
-        selectedOption = [...filteredOptions].reverse().find(o => o.strike <= ltp);
-    } else {
-        // For Sell (PE): ITM means strike price ≥ LTP
-        selectedOption = filteredOptions.find(o => o.strike >= ltp);
-    }
-        console.log('important', selectedOption || null)
-    return selectedOption || null; // Return the selected option or null if none found
-  }
 
   const logout = async() => {
     clearSession();
@@ -375,26 +175,15 @@ const App = () => {
     await fetchData("logout");
   }
 
-  const fetchOrderBook = async() => {
+  const fetchSuperTrend = async() => {
     try{
-      const response = await fetchData(`getOrderBook`, "GET");
-      setJsonAPIResponse(response)
+      const response = await fetchData(`getSuperTrend`, "GET");
+      setJsonAPIResponse(response.reverse())
 
     }catch(e){
       console.log(e)
     }
   }
-
-  const fetchTredBook = async() => {
-    try{
-      const response = await fetchData(`getTredBook`, "GET");
-      setJsonAPIResponse(response)
-
-    }catch(e){
-      console.log(e)
-    }
-  }
-  
 
   return (
     <>
@@ -422,7 +211,7 @@ const App = () => {
                             </Toolbar>
                           </AppBar>
                           <Box sx={{px: 2 }}>
-                            {/* <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 2, md: 4 }}  sx={{mt:'20px'}}  alignItems="center" justifyContent={'space-evenly'}>
+                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 2, md: 4 }}  sx={{mt:'20px'}}  alignItems="center" justifyContent={'space-evenly'}>
                               <Box sx={{ width: { xs: "100%", sm: "auto" }, px: { xs: 2, sm: 0 } }}>
                                 <Card variant="outlined" >
                                   <CardContent >
@@ -430,8 +219,45 @@ const App = () => {
                                   </CardContent>
                                 </Card>
                               </Box>
-                              <ATRCalculator candles={candleData} multiplier={2} limit={20} setSuperTrendToParent={setSuperTrend} />
-                            </Stack> */}
+                               
+                              <Box sx={{ width: { xs: "100%", sm: "auto" }, px: { xs: 2, sm: 0 } }}>
+                                <Card variant="outlined">
+                                  <CardContent>
+                                    <Typography variant="h6" >Direction</Typography>
+                                    {
+                                      jsonAPIResponse?.length > 0 ? 
+                                        <>
+                                          <Typography variant="h6" color={jsonAPIResponse[0]['superTrendDirection']  == 'up' ? "green" : "red"}>
+                                            {jsonAPIResponse[0]['superTrendDirection'] }
+                                          </Typography>
+                                        </> 
+                                        : "Calculating..."
+                                    }
+                                    
+                        
+                                  </CardContent>
+                                </Card>
+                              </Box>
+                              <Box sx={{ width: { xs: "100%", sm: "auto" } , px: { xs: 2, sm: 0 } }}>
+                                <Card variant="outlined">
+                                  <CardContent>
+                                    <Typography variant="h6" >SuperTrend</Typography>
+                                    {
+                                      jsonAPIResponse?.length > 0 ?  <>
+                                          <Typography variant="h6">
+                                          {jsonAPIResponse[0]['superTrendValue'] }
+                                          </Typography>
+                                        </> 
+                                      : "Calculating..." 
+                                    }
+                                    
+                        
+                                  </CardContent>
+                                </Card>
+                              </Box>
+                                  
+                              {/* <ATRCalculator candles={candleData} multiplier={2} limit={20} setSuperTrendToParent={setSuperTrend} /> */}
+                            </Stack>
 
                             {/* <Button variant="contained" onClick={() => {fetchOrderBook()}}> Get All Orders</Button>
                             <Button variant="contained" onClick={() => {fetchTredBook()}}> Get Settled Orders</Button> */}
@@ -439,9 +265,22 @@ const App = () => {
                               {JSON.stringify(jsonAPIResponse)}
                             </Box> */}
 
+                            <div className="container">
+                                <h2>Super Trend History</h2>
+                                <div className="data-container">
+                                  {jsonAPIResponse?.length > 0 && jsonAPIResponse.map((item) => (
+                                    <div key={item._id} className={`data-card ${item.superTrendDirection}`}>
+                                      <p><strong>Time:</strong> {item.createdAt}</p>
+                                      <p><strong>Value:</strong> {item.superTrendValue}</p>
+                                      <p><strong>Direction:</strong> <span>{item.superTrendDirection}</span></p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
                             <Stack direction="column" spacing={2}   sx={{mt:'20px'}}>
                               <Box className="header">
-                                <Box><span className="instrument">P&L:</span>  <span className={totalReturn >= 0 ? 'profit':'loss'}>{totalReturn * orderQty} </span> </Box>
+                                <Box><span className="instrument">P&L:</span>  <span className={totalReturn >= 0 ? 'profit':'loss'}>{totalReturn } Points</span> </Box>
+                                <Box><span className="instrument">Brokerage:</span>  <span>{brokerage } Rs</span> </Box>
                                 <Box><Button  variant="contained" onClick={()=>(fetchAllOrders())}>Get orders</Button></Box>
                               </Box>
                               
