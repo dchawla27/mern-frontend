@@ -38,7 +38,9 @@ const App = () => {
   const [brokerage, setBrokerage] = useState(0);
   const [openOrder, setOpenOrder] = useState(null);
   const [instrumentsList, setInstrumentsList] = useState(null)
-  const [jsonAPIResponse, setJsonAPIResponse] = useState({})
+  const [jsonAPIResponse, setJsonAPIResponse] = useState()
+  const [isLoadingSuperTrend, setIsLoadingSuperTrend] = useState(false)
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false)
 
   const isOrderAllowed = false
   const orderQty = 75;
@@ -66,15 +68,14 @@ const App = () => {
     };
 
     healthCheck();
-    fetchSuperTrend()
     const intervalId = setInterval(healthCheck, 15 * 60 * 1000);
-    const intervalSuperTrend = setInterval(fetchSuperTrend, 10 * 1000);
-    return () => {clearInterval(intervalId); clearInterval(intervalSuperTrend)};
+    return () => {clearInterval(intervalId)};
   }, []);
 
 
   const fetchAllOrders = async () => {
     try {
+      setIsLoadingOrders(true)
       const response = await fetchData("getAllOrders", "GET");
       if (!response || response.length === 0) return;
       let consideredOrdersList = []
@@ -90,12 +91,12 @@ const App = () => {
           orderChecked.push(initialOrd.orderid)
           orderChecked.push(squareOffOrd.orderid)
 
-          let diff = null;
-          if(initialOrd.optiontype == "CE"){
-            diff = squareOffOrd.instrumentPrice - initialOrd.instrumentPrice
-          }else{
-            diff = initialOrd.instrumentPrice - squareOffOrd.instrumentPrice
-          }
+          let diff = squareOffOrd.price - initialOrd.price;
+          // if(initialOrd.optiontype == "CE"){
+          //   diff = squareOffOrd.instrumentPrice - initialOrd.instrumentPrice
+          // }else{
+          //   diff = initialOrd.instrumentPrice - squareOffOrd.instrumentPrice
+          // }
           
           formatedOrders.push({
             instrument: `NIFTY ${initialOrd.expirydate} ${initialOrd.strikeprice} ${initialOrd.optiontype}` ,
@@ -161,9 +162,11 @@ const App = () => {
 
       const brokerage = response.length * 20
       setBrokerage(brokerage)
-      setTotalReturn(totalPnl);
+      setTotalReturn(totalPnl.toFixed(2));
     } catch (e) {
       console.error("Error fetching orders:", e);
+    } finally{
+      setIsLoadingOrders(false)
     }
   };
 
@@ -177,11 +180,14 @@ const App = () => {
 
   const fetchSuperTrend = async() => {
     try{
+      setIsLoadingSuperTrend(true)
       const response = await fetchData(`getSuperTrend`, "GET");
       setJsonAPIResponse(response.reverse())
 
     }catch(e){
       console.log(e)
+    }finally{
+      setIsLoadingSuperTrend(false)
     }
   }
 
@@ -211,6 +217,12 @@ const App = () => {
                             </Toolbar>
                           </AppBar>
                           <Box sx={{px: 2 }}>
+                              <Box className="header" sx={{m: 2 }}>
+                                {/* <Box><span className="instrument">Brokerage:</span>  <span>{brokerage } Rs</span> </Box> */}
+                                <Box><Button  variant="contained" onClick={()=>(fetchSuperTrend())}>Get SuperTrend</Button></Box>
+                                <Box><Button  variant="contained" onClick={()=>(fetchAllOrders())}>Get orders</Button></Box>
+                              </Box>
+
                             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 2, md: 4 }}  sx={{mt:'20px'}}  alignItems="center" justifyContent={'space-evenly'}>
                               <Box sx={{ width: { xs: "100%", sm: "auto" }, px: { xs: 2, sm: 0 } }}>
                                 <Card variant="outlined" >
@@ -220,6 +232,7 @@ const App = () => {
                                 </Card>
                               </Box>
                                
+                              
                               <Box sx={{ width: { xs: "100%", sm: "auto" }, px: { xs: 2, sm: 0 } }}>
                                 <Card variant="outlined">
                                   <CardContent>
@@ -231,13 +244,15 @@ const App = () => {
                                             {jsonAPIResponse[0]['superTrendDirection'] }
                                           </Typography>
                                         </> 
-                                        : "Calculating..."
+                                        : "-"
                                     }
                                     
                         
                                   </CardContent>
                                 </Card>
                               </Box>
+                              
+                              
                               <Box sx={{ width: { xs: "100%", sm: "auto" } , px: { xs: 2, sm: 0 } }}>
                                 <Card variant="outlined">
                                   <CardContent>
@@ -248,41 +263,38 @@ const App = () => {
                                           {jsonAPIResponse[0]['superTrendValue'] }
                                           </Typography>
                                         </> 
-                                      : "Calculating..." 
+                                      : "-" 
                                     }
                                     
                         
                                   </CardContent>
                                 </Card>
                               </Box>
+
+                             
                                   
                               {/* <ATRCalculator candles={candleData} multiplier={2} limit={20} setSuperTrendToParent={setSuperTrend} /> */}
                             </Stack>
 
-                            {/* <Button variant="contained" onClick={() => {fetchOrderBook()}}> Get All Orders</Button>
-                            <Button variant="contained" onClick={() => {fetchTredBook()}}> Get Settled Orders</Button> */}
-                            {/* <Box>
-                              {JSON.stringify(jsonAPIResponse)}
-                            </Box> */}
-
-                            <div className="container">
-                                <h2>Super Trend History</h2>
-                                <div className="data-container">
-                                  {jsonAPIResponse?.length > 0 && jsonAPIResponse.map((item) => (
-                                    <div key={item._id} className={`data-card ${item.superTrendDirection}`}>
-                                      <p><strong>Time:</strong> {item.createdAt}</p>
-                                      <p><strong>Value:</strong> {item.superTrendValue}</p>
-                                      <p><strong>Direction:</strong> <span>{item.superTrendDirection}</span></p>
-                                    </div>
-                                  ))}
-                                </div>
+                           
+                            {
+                              jsonAPIResponse?.length > 0 && <div className="container">
+                              <h2>Super Trend History</h2>
+                              <div className="data-container">
+                                {jsonAPIResponse?.length > 0 && jsonAPIResponse.map((item) => (
+                                  <div key={item._id} className={`data-card ${item.superTrendDirection}`}>
+                                    <p><strong>Time:</strong> {item.createdAt}</p>
+                                    <p><strong>Value:</strong> {item.superTrendValue}</p>
+                                    <p><strong>Direction:</strong> <span>{item.superTrendDirection}</span></p>
+                                  </div>
+                                ))}
                               </div>
+                            </div>
+                            }
+                            
                             <Stack direction="column" spacing={2}   sx={{mt:'20px'}}>
-                              <Box className="header">
-                                <Box><span className="instrument">P&L:</span>  <span className={totalReturn >= 0 ? 'profit':'loss'}>{totalReturn } Points</span> </Box>
-                                {/* <Box><span className="instrument">Brokerage:</span>  <span>{brokerage } Rs</span> </Box> */}
-                                <Box><Button  variant="contained" onClick={()=>(fetchAllOrders())}>Get orders</Button></Box>
-                              </Box>
+                              
+                              <Box><span className="instrument">P&L:</span>  <span className={totalReturn >= 0 ? 'profit':'loss'}>{totalReturn} Points;  ({(totalReturn * orderQty).toLocaleString('en-IN')} Rs.)</span> </Box>
                               
                               {
                                 ordersListTemp?.length > 0 && 
@@ -291,7 +303,7 @@ const App = () => {
                                     
                                     return (
                                       <>
-                                      <Box>{}</Box>
+                                      
                                       <Box key={ind} className="trade-card">
                                         <div className="trade-header">
                                           <label className="instrument">{row.instrument}</label>
@@ -332,9 +344,9 @@ const App = () => {
                                               <label>{reasonsMapping[row.description]}</label>
                                               <label>
                                                 {row.isPositive ? (
-                                                  <span className="profit">Gain +{row?.difference } Points</span>
+                                                  <span className="profit">Gain +{row?.difference }</span>
                                                 ) : (
-                                                  <span className="loss">Loss {row?.difference } Points</span>
+                                                  <span className="loss">Loss {row?.difference }</span>
                                                 )}
                                               </label>
                                             </div>
