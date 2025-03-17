@@ -200,7 +200,7 @@ const App = () => {
           <Paper elevation={3} >
               
               {!isUserLoggedIn && <LoginForm setIsLoading = {setIsLoading} setIsUserLoggedIn = {setIsUserLoggedIn} />}
-              {!isAllowedTime() && isUserLoggedIn && <Paper elevation={3} className="notice"> <h3>Orders will be executed only between {marketStartTime.format("hh:mm A")} and {marketEndTime.format("hh:mm A")}.</h3> </Paper>}
+              {!isAllowedTime() && isUserLoggedIn && <Paper elevation={2} className="notice"> <label>Orders will be executed only between {marketStartTime.format("hh:mm A")} and {marketEndTime.format("hh:mm A")}.</label></Paper>}
               
               {
                 isUserLoggedIn && 
@@ -281,7 +281,8 @@ const App = () => {
                               jsonAPIResponse?.length > 0 && <div className="container">
                               <h2>Super Trend History</h2>
                               <div className="data-container">
-                                {jsonAPIResponse?.length > 0 && jsonAPIResponse.map((item) => (
+                                {isLoadingSuperTrend && "Loading..."}
+                                {!isLoadingSuperTrend && jsonAPIResponse?.length > 0 && jsonAPIResponse.map((item) => (
                                   <div key={item._id} className={`data-card ${item.superTrendDirection}`}>
                                     <p><strong>Time:</strong> {item.createdAt}</p>
                                     <p><strong>Value:</strong> {item.superTrendValue}</p>
@@ -297,7 +298,10 @@ const App = () => {
                               <Box><span className="instrument">P&L:</span>  <span className={totalReturn >= 0 ? 'profit':'loss'}>{totalReturn} Points;  ({(totalReturn * orderQty).toLocaleString('en-IN')} Rs.)</span> </Box>
                               
                               {
-                                ordersListTemp?.length > 0 && 
+                                isLoadingOrders && "Loading ..."
+                              }
+                              {
+                                !isLoadingOrders && ordersListTemp?.length > 0 && 
                                 <>
                                   {ordersListTemp.map((row, ind) => {
                                     
@@ -341,7 +345,7 @@ const App = () => {
                                             <div className="divider"></div>
                                             <div className="trade-investment">
                                               <label>Invested: ₹{row.invested}</label>
-                                              <label>{reasonsMapping[row.description]}</label>
+                                              <label style={{fontSize:'12px'}}>{reasonsMapping[row.description]}</label>
                                               <label>
                                                 {row.isPositive ? (
                                                   <span className="profit">Gain +{row?.difference }</span>
