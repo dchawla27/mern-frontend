@@ -21,7 +21,7 @@ export const calculateSuperTrend = (candles, atrPeriod, multiplier) => {
   // Initialize SuperTrend values
   const superTrend = [];
   let prevUpperBand = 0;
-  let prevLowerBand = 0;
+  // let prevLowerBand = 0;
   let prevSuperTrend = 0;
   // atrPeriod = -atrPeriod;
   candles.forEach((candle, index) => {
@@ -35,7 +35,7 @@ export const calculateSuperTrend = (candles, atrPeriod, multiplier) => {
 
     superTrend.push(superTrendValue);
     prevUpperBand = upperBand;
-    prevLowerBand = lowerBand;
+    // prevLowerBand = lowerBand;
     prevSuperTrend = superTrendValue;
   });
 

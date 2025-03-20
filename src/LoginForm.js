@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { TextField, Button, Grid, Paper, Typography } from '@mui/material';
 import fetchData from './services/apiUtils';
-import { setItemIntoLocalStorage } from './common/functions';
 
 const LoginForm = ({setIsLoading, setIsUserLoggedIn}) => {
   const [formData, setFormData] = useState({
@@ -26,14 +25,13 @@ const LoginForm = ({setIsLoading, setIsUserLoggedIn}) => {
     try {
       const response = await fetchData('login','POST',formData)
       if(response?.success){
-        let result = response.data
         setIsLoading(false)
         setIsUserLoggedIn(true)
       }else{
         setError('Login failed. Please check your credentials.');  
       }
     } catch (err) {
-      setError('Login failed. Please check your credentials.');
+      setError('Login failed. Please check your credentials.', err);
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Typography, Stack, Box, Card, CardContent } from "@mui/material";
+import { Typography, Box, Card, CardContent } from "@mui/material";
 
 
 const ATRCalculator = ({ candles, multiplier, limit, setSuperTrendToParent }) => {
@@ -117,10 +117,7 @@ const ATRCalculator = ({ candles, multiplier, limit, setSuperTrendToParent }) =>
     }
   }, [candles, multiplier, limit]);
 
-  let res = "Calculating..."
-  if(superTrendResult !== null){
-    res = superTrendResult? upperBands : lowerBands
-  }
+
   return (
     <>
       <Box sx={{ width: { xs: "100%", sm: "auto" }, px: { xs: 2, sm: 0 } }}>

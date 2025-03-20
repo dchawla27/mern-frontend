@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { AppBar, Box, Toolbar, Button, IconButton,  Typography, Stack } from "@mui/material";
+import {Typography } from "@mui/material";
 
-const StockPrice = ({ getLTP }) => {
+const StockPrice = () => {
   const [ltp, setLtp] = useState(null);
 
   useEffect(() => {
@@ -11,7 +11,6 @@ const StockPrice = ({ getLTP }) => {
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
       setLtp(data.ltp);
-      getLTP(data.ltp)
     };
 
     return () => eventSource.close(); // Cleanup on unmount

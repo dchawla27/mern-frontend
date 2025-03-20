@@ -1,5 +1,3 @@
-import { getLocalStorageItem } from "../common/functions";
-
 const API_HOST = process.env.REACT_APP_API_HOST;
 
 const fetchData = async (endpoint, method = 'GET', body = null) => {

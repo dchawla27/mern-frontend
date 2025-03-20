@@ -1,17 +1,16 @@
 // src/App.js
 
-import React, { useEffect, useRef, memo, useState } from "react";
-import MenuIcon from '@mui/icons-material/Menu';
-import { AppBar, Box, Toolbar, Button, IconButton,  Typography, Stack, Divider } from "@mui/material";
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Card,CardContent,Grid, Container } from '@mui/material';
+import React, { useEffect, useState } from "react";
+import { AppBar, Box, Toolbar, Button,  Typography, Stack } from "@mui/material";
+import { styled } from '@mui/material/styles';
+import { Paper, Card,CardContent, Container, Switch, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import moment from 'moment';
-import ATRCalculator from "./ATRCalculator";
 import StockPrice from "./StickPrice";
 import LoginForm from "./LoginForm";
 import fetchData from "./services/apiUtils";
-import { clearSession, isSessionDetailsAvailable } from "./common/functions";
+import { clearSession } from "./common/functions";
 import './App.css'
-const optionsExpiryMonth = process.env.REACT_APP_OPTIONS_EXPIRY_MONTH;
+
 
 const reasonsMapping =  {
     TREND_DIRECTION_CHANGE:"Trend Direction Changed.",
@@ -26,29 +25,21 @@ const reasonsMapping =  {
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
-  const [candleData, setCandleData] = useState([]);
-  const [candleDataNiftyFuture, setCandleDataNiftyFuture] = useState([]);
-  const [ltp, setLTP] = useState(-1);
-  const [isOrderPlaced, setIsOrderPlaced] = useState(false);
-  const [orderDirection, setOrderDirection] = useState(null);
-  const [superTrend, setSuperTrend] = useState(null);
-  const [ordersList, setOrdersList] = useState([]);
   const [ordersListTemp, setOrdersListTemp] = useState([]);
   const [totalReturn, setTotalReturn] = useState(0);
-  const [brokerage, setBrokerage] = useState(0);
-  const [openOrder, setOpenOrder] = useState(null);
-  const [instrumentsList, setInstrumentsList] = useState(null)
   const [jsonAPIResponse, setJsonAPIResponse] = useState()
   const [isLoadingSuperTrend, setIsLoadingSuperTrend] = useState(false)
   const [isLoadingOrders, setIsLoadingOrders] = useState(false)
+  const [settings, setSettings] = useState(null)
+  const [isLiveOrdersAllowed, setIsLiveOrdersAllowed] = useState(null);
+  const [openConfirm, setOpenConfirm] = useState(false);
+  const [pendingState, setPendingState] = useState(false);
 
-  const isOrderAllowed = false
+
+  
   const orderQty = 75;
-  const instrument = "NIFTY 50";
-  const invested = 200000
   const marketStartTime = moment().hour(9).minute(20);
   const marketEndTime = moment().hour(15).minute(0);
-  const threePm = moment().hour(15).minute(0);
 
 
   useEffect(() => {
@@ -68,17 +59,28 @@ const App = () => {
     };
 
     healthCheck();
+    fetchAllOrders();
+    fetchSuperTrend();  
+    fetchSettings()
     const intervalId = setInterval(healthCheck, 15 * 60 * 1000);
     return () => {clearInterval(intervalId)};
   }, []);
 
+  const fetchSettings = async () => {
+    try {
+      const response = await fetchData("getAllSettings", "GET");
+      setSettings(response)
+      setIsLiveOrdersAllowed(response.isLiveOrdresAllowed)
+    }catch(e){
+      console.log(e)
+    }
+  }
 
   const fetchAllOrders = async () => {
     try {
       setIsLoadingOrders(true)
       const response = await fetchData("getAllOrders", "GET");
       if (!response || response.length === 0) return;
-      let consideredOrdersList = []
 
       let formatedOrders = []
       let orderChecked = []
@@ -153,15 +155,15 @@ const App = () => {
         
       }
       
-      setOrdersList(response.reverse());
+      // setOrdersList(response.reverse());
       setOrdersListTemp(formatedOrders.reverse());
 
       const completeOrders = formatedOrders.filter((x) => x.orderStatus === "Executed");
       
       const totalPnl = completeOrders?.reduce((acc, order) => acc + (Number(order.difference) || 0), 0) || 0;
 
-      const brokerage = response.length * 20
-      setBrokerage(brokerage)
+      // const brokerage = response.length * 20
+      // setBrokerage(brokerage)
       setTotalReturn(totalPnl.toFixed(2));
     } catch (e) {
       console.error("Error fetching orders:", e);
@@ -182,7 +184,7 @@ const App = () => {
     try{
       setIsLoadingSuperTrend(true)
       const response = await fetchData(`getSuperTrend`, "GET");
-      setJsonAPIResponse(response.reverse())
+      setJsonAPIResponse(response)
 
     }catch(e){
       console.log(e)
@@ -190,6 +192,76 @@ const App = () => {
       setIsLoadingSuperTrend(false)
     }
   }
+
+
+  const AntSwitch = styled(Switch)(({ theme }) => ({
+    width: 28,
+    height: 16,
+    padding: 0,
+    display: "flex",
+    "&:active": {
+      "& .MuiSwitch-thumb": {
+        width: 15,
+      },
+      "& .MuiSwitch-switchBase.Mui-checked": {
+        transform: "translateX(9px)",
+      },
+    },
+    "& .MuiSwitch-switchBase": {
+      padding: 2,
+      "&.Mui-checked": {
+        transform: "translateX(12px)",
+        color: "#fff",
+        "& + .MuiSwitch-track": {
+          opacity: 1,
+          backgroundColor: theme.palette.mode === "dark" ? "#177ddc" : "#1890ff",
+        },
+      },
+    },
+    "& .MuiSwitch-thumb": {
+      boxShadow: "0 2px 4px 0 rgb(0 35 11 / 20%)",
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      transition: theme.transitions.create(["width"], {
+        duration: 200,
+      }),
+    },
+    "& .MuiSwitch-track": {
+      borderRadius: 16 / 2,
+      opacity: 1,
+      backgroundColor:
+        theme.palette.mode === "dark" ? "rgba(255,255,255,.35)" : "rgba(0,0,0,.25)",
+      boxSizing: "border-box",
+    },
+  }));
+
+  const handleToggle = (event) => {
+    setPendingState(event.target.checked); // Save new state temporarily
+    setOpenConfirm(true); // Open confirmation dialog
+  };
+
+  const handleConfirm = async () => {
+    setOpenConfirm(false);
+    
+    try {
+      const {_id} = settings
+      let dataToPass = {
+        id: _id,
+        isLiveOrdresAllowed: pendingState
+      }
+      await fetchData(`updateLiveOrdersSetting`, "POST",dataToPass);
+      setIsLiveOrdersAllowed(pendingState)
+      // setIsLiveOrdersAllowed(); // Apply new state only after success
+    } catch (error) {
+      console.error("API Error:", error);
+    }
+  };
+
+  const handleCancel = () => {
+    setOpenConfirm(false);
+    // setPendingState(isLiveOrdersAllowed); // Revert switch
+  };
 
   return (
     <>
@@ -207,27 +279,39 @@ const App = () => {
                   <>
                           <AppBar position="static">
                             <Toolbar>
-                              <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 2 }} >
+                              {/* <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 2 }} >
                                 <MenuIcon />
-                              </IconButton>
+                              </IconButton> */}
                               <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-                              Algo Treding
+                                Algo Treding
                               </Typography>
                               {isUserLoggedIn ? <Button color="inherit" onClick={() => {logout()}}>Logout</Button> : <Button color="inherit">Login</Button>}
                             </Toolbar>
                           </AppBar>
+                          
+                          {isLiveOrdersAllowed !== null && <Stack direction="row" spacing={1} sx={{ alignItems: "center", px: 2, my: 2 }}>
+                            <Typography sx={{ flexGrow: 1 }}>Live Orders:</Typography>
+                            <Typography>{isLiveOrdersAllowed ? "Allowed" : "Not Allowed"}</Typography>
+                            <AntSwitch
+                              checked={isLiveOrdersAllowed}
+                              onChange={handleToggle}
+                              inputProps={{ "aria-label": "ant design" }}
+                            />
+                          </Stack>
+                          }
                           <Box sx={{px: 2 }}>
                               <Box className="header" sx={{m: 2 }}>
                                 {/* <Box><span className="instrument">Brokerage:</span>  <span>{brokerage } Rs</span> </Box> */}
                                 <Box><Button  variant="contained" onClick={()=>(fetchSuperTrend())}>Get SuperTrend</Button></Box>
                                 <Box><Button  variant="contained" onClick={()=>(fetchAllOrders())}>Get orders</Button></Box>
+                                
                               </Box>
 
                             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 2, md: 4 }}  sx={{mt:'20px'}}  alignItems="center" justifyContent={'space-evenly'}>
                               <Box sx={{ width: { xs: "100%", sm: "auto" }, px: { xs: 2, sm: 0 } }}>
                                 <Card variant="outlined" >
                                   <CardContent >
-                                    <StockPrice getLTP={setLTP} />
+                                    <StockPrice />
                                   </CardContent>
                                 </Card>
                               </Box>
@@ -270,10 +354,7 @@ const App = () => {
                                   </CardContent>
                                 </Card>
                               </Box>
-
-                             
-                                  
-                              {/* <ATRCalculator candles={candleData} multiplier={2} limit={20} setSuperTrendToParent={setSuperTrend} /> */}
+                              
                             </Stack>
 
                            
@@ -364,127 +445,24 @@ const App = () => {
                                 </>
                               }
                             </Stack>
-                            {/* <Divider  sx={{ borderWidth: 2, margin:'0 0 20px 0' }} /> */}
-                            {/* <Box>
-                            { 
-                              isOrderPlaced && <>
-                                <Stack direction="row" spacing={1} padding={'20px'} alignItems="center" justifyContent={'space-between'}>
-                                  <Typography variant="h6" gutterBottom>
-                                    Open Positions
-                                  </Typography>
-                                  <Button variant="contained" onClick={() => {fetchAllOrders()}}>Refresh</Button>
-                                </Stack>
-                                <TableContainer component={Paper} sx={{ boxShadow: 3, borderRadius: 2, overflow: 'hidden' }}>
-                                  <Table sx={{ minWidth: 650 }} aria-label="simple table">
-                                    <TableHead>
-                                      <TableRow sx={{  color: 'white' }}>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Type</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Price</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>SuperTrend Value</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Qty</TableCell>
-                                      </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                      {ordersList.filter(x=>x.orderStatus == 'open').map((row, ind) => (
-                                        <TableRow
-                                          key={row.ind}
-                                          sx={{
-                                            '&:nth-of-type(even)': {
-                                              backgroundColor: '#f4f6f8',
-                                            },
-                                            '&:hover': {
-                                              backgroundColor: '#e0e0e0',
-                                            },
-                                          }}
-                                        >
-                                          <TableCell>{ind + 1}</TableCell>
-                                          <TableCell
-                                            sx={{
-                                              backgroundColor: row.type === 'Buy' ? 'green' : 'red',
-                                              color: '#fff',
-                                              fontWeight: 'bold',
-                                              padding: '12px',
-                                              textAlign: 'center',
-                                            }}
-                                          >
-                                            {row.type}
-                                          </TableCell>
-                                          <TableCell >{row.date}</TableCell>
-                                          <TableCell >{row.price.toFixed(2)}</TableCell>
-                                          <TableCell >{row.superTrendValue}</TableCell>
-                                          <TableCell >{row.qty}</TableCell>
-                                        </TableRow>
-                                      ))}
-                                    </TableBody>
-                                  </Table>
-                                </TableContainer>
-                              </>
-                            }
                             
-                            {
-                              ordersList?.length > 0 && <>
-                              <Stack direction="row" spacing={1} padding={'20px'} alignItems="center" justifyContent={'space-between'}>
-                                <Typography variant="h6" gutterBottom>
-                                  Completed Orders
-                                </Typography>
-                                <Button variant="contained" onClick={() => {fetchAllOrders()}}>Refresh</Button>
-                              </Stack>
-                              <TableContainer component={Paper} sx={{ boxShadow: 3, borderRadius: 2, overflow: 'hidden' }}>
-                                <Table sx={{ minWidth: 650 }} aria-label="simple table">
-                                  <TableHead>
-                                    <TableRow sx={{  color: 'white' }}>
-                                      <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
-                                      <TableCell sx={{ fontWeight: 'bold' }}>Type</TableCell>
-                                      <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
-                                      <TableCell sx={{ fontWeight: 'bold' }}>Price</TableCell>
-                                      <TableCell sx={{ fontWeight: 'bold' }}>SuperTrend Value</TableCell>
-                                      <TableCell sx={{ fontWeight: 'bold' }}>Qty</TableCell>
-                                    </TableRow>
-                                  </TableHead>
-                                  <TableBody>
-                                    {ordersList.filter(x=>x.orderStatus !== 'open').map((row, ind) => (
-                                      <TableRow
-                                        key={row.ind}
-                                        sx={{
-                                          '&:nth-of-type(even)': {
-                                            backgroundColor: '#f4f6f8',
-                                          },
-                                          '&:hover': {
-                                            backgroundColor: '#e0e0e0',
-                                          },
-                                        }}
-                                      >
-                                        <TableCell>{ind + 1}</TableCell>
-                                        <TableCell
-                                          sx={{
-                                            backgroundColor: row.type === 'Buy' ? 'green' : 'red',
-                                            color: '#fff',
-                                            fontWeight: 'bold',
-                                            padding: '12px',
-                                            textAlign: 'center',
-                                          }}
-                                        >
-                                          {row.type}
-                                        </TableCell>
-                                        <TableCell >{row.date}</TableCell>
-                                        <TableCell >{row.price.toFixed(2)}</TableCell>
-                                        <TableCell >{row.superTrendValue}</TableCell>
-                                        <TableCell >{row.qty}</TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                              </TableContainer>
-                              </>
-                            }
-                            
-                            </Box> */}
                           </Box>
                                 
                   </>
               }
+
+                <Dialog open={openConfirm} onClose={handleCancel}>
+                  <DialogTitle>Confirm Action</DialogTitle>
+                  <DialogContent>
+                    <Typography>
+                      Are you sure you want to {pendingState ? "enable" : "disable"} Live Orders?
+                    </Typography>
+                  </DialogContent>
+                  <DialogActions>
+                    <Button onClick={handleCancel} color="secondary">Cancel</Button>
+                    <Button onClick={handleConfirm} color="primary" variant="contained">Confirm</Button>
+                  </DialogActions>
+                </Dialog>
               </Paper>
               </Container>
       }
